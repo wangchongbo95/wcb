@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>2048小游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background-color: #faf8ef;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 30px;
+        }
+        h1 {
+            color: #776e65;
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .score-box {
+            color: #776e65;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        .grid {
+            width: 400px;
+            height: 400px;
+            background-color: #bbada0;
+            border-radius: 8px;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 12px;
+        }
+        .cell {
+            background-color: #cdc1b4;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: #776e65;
+        }
+        .num-2 {background:#eee4da;}
+        .num-4 {background:#ede0c8;}
+        .num-8 {background:#f2b179; color:white;}
+        .num-16 {background:#f59563; color:white;}
+        .num-32 {background:#f67c5f; color:white;}
+        .num-64 {background:#f65e3b; color:white;}
+        .num-128 {background:#edcf72; color:white;}
+        .num-256 {background:#edcc61; color:white;}
+        .num-512 {background:#edc850; color:white;}
+        .num-1024 {background:#edc53f; color:white; font-size:28px;}
+        .num-2048 {background:#edc22e; color:white; font-size:28px;}
+        .tip {
+            margin-top:18px;
+            color:#776e65;
+        }
+        button{
+            margin-top:12px;
+            padding:8px 20px;
+            font-size:16px;
+            border:none;
+            border-radius:6px;
+            background:#8f7a66;
+            color:white;
+            cursor:pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>2048</h1>
+    <div class="score-box">分数：<span id="score">0</span></div>
+    <div class="grid" id="grid"></div>
+    <div class="tip">使用 上下左右方向键移动方块</div>
+    <button id="restart">重新开始</button>
+
+<script>
+const size = 4;
+let board = [];
+let score = 0;
+
+// 初始化棋盘
+function initBoard(){
+    board = Array.from({length:size},()=>Array(size).fill(0));
+    score = 0;
+    addRandom();
+    addRandom();
+    render();
+}
+
+// 随机生成2或者4
+function addRandom(){
+    let empty = [];
+    for(let i=0;i<size;i++){
+        for(let j=0;j<size;j++){
+            if(board[i][j]===0) empty.push([i,j]);
+        }
+    }
+    if(empty.length===0) return;
+    const [r,c] = empty[Math.floor(Math.random()*empty.length)];
+    board[r][c] = Math.random()<0.9 ? 2 : 4;
+}
+
+// 渲染棋盘
+function render(){
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    for(let i=0;i<size;i++){
+        for(let j=0;j<size;j++){
+            const div = document.createElement('div');
+            div.className = 'cell';
+            const val = board[i][j];
+            if(val!==0){
+                div.classList.add('num-'+val);
+                div.innerText = val;
+            }
+            grid.appendChild(div);
+        }
+    }
+    document.getElementById('score').innerText = score;
+}
+
+// 单行合并（向左）
+function mergeLine(arr){
+    let newArr = arr.filter(x=>x!==0);
+    for(let i=0;i<newArr.length-1;i++){
+        if(newArr[i]===newArr[i+1]){
+            newArr[i]*=2;
+            score += newArr[i];
+            newArr[i+1]=0;
+        }
+    }
+    newArr = newArr.filter(x=>x!==0);
+    while(newArr.length<size) newArr.push(0);
+    return newArr;
+}
+
+// 移动逻辑
+function move(dir){
+    let oldBoard = JSON.parse(JSON.stringify(board));
+    if(dir==='left'){
+        for(let i=0;i<size;i++) board[i]=mergeLine(board[i]);
+    }else if(dir==='right'){
+        for(let i=0;i<size;i++){
+            let line = board[i].reverse();
+            line = mergeLine(line);
+            board[i] = line.reverse();
+        }
+    }else if(dir==='up'){
+        for(let j=0;j<size;j++){
+            let col = [board[0][j],board[1][j],board[2][j],board[3][j]];
+            col = mergeLine(col);
+            for(let i=0;i<size;i++) board[i][j]=col[i];
+        }
+    }else if(dir==='down'){
+        for(let j=0;j<size;j++){
+            let col = [board[3][j],board[2][j],board[1][j],board[0][j]];
+            col = mergeLine(col);
+            for(let i=0;i<size;i++) board[3-i][j]=col[i];
+        }
+    }
+    // 如果棋盘发生变化，新增随机方块
+    if(JSON.stringify(oldBoard)!==JSON.stringify(board)){
+        addRandom();
+        render();
+        checkGameOver();
+    }
+}
+
+// 判断游戏结束
+function checkGameOver(){
+    for(let i=0;i<size;i++){
+        for(let j=0;j<size;j++){
+            if(board[i][j]===0) return;
+            if(j<3 && board[i][j]===board[i][j+1]) return;
+            if(i<3 && board[i][j]===board[i+1][j]) return;
+        }
+    }
+    alert('游戏结束！最终分数：'+score);
+}
+
+// 键盘监听
+document.addEventListener('keydown',e=>{
+    switch(e.key){
+        case 'ArrowLeft': move('left'); break;
+        case 'ArrowRight': move('right'); break;
+        case 'ArrowUp': move('up'); break;
+        case 'ArrowDown': move('down'); break;
+    }
+})
+
+document.getElementById('restart').onclick = initBoard;
+initBoard();
+</script>
+</body>
+</html>
